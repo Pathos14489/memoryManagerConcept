@@ -1,5 +1,7 @@
 /node_modules
 /old
 /tests
+/tests2
+/test.json
 /package-lock.json
 all_scripts_raw.json

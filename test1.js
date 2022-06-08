@@ -11,6 +11,7 @@ async function main(){
     // Instead of checking every memory, if the best guess it's found so far lasts bestGuessOf new memories
     // it will stop checking to save enormous amounts of time at the cost of not always finding the best guess.
     manager.bestGuess = true; 
+    manager.writeCache = true; // Writes the memory caches to file so they can be loaded later -- same queries will already be computed
     manager.bestGuessOf = 100;
 
     // Downloads test data from GJBroughton/Star_Trek_Scripts repository if needed
@@ -61,11 +62,18 @@ async function main(){
 
     console.log(`${manager.memories.length} memories across ~${manager.memories.length*manager.memorySize} chunks loaded`);
     
-    var str = "Data, who is your father?";
+    var str = "When was Q nice to Picard?";
 
     fs.mkdirSync('tests', {recursive: true});
 
     // Test
+    var time1a1 = Date.now();
+    var embeddinga1 = await manager.getEmbedding(str,"oldest",false);
+    console.log(embeddinga1);
+    embeddinga1.processingTime = Date.now() - time1a1;
+    fs.writeFileSync('tests/all.json', JSON.stringify(embeddinga1));
+    console.log(Date.now() - time1a1);
+
     var time1r1 = Date.now();
     var embeddingr1 = await manager.getEmbedding(str,"random");
     console.log(embeddingr1);
@@ -87,13 +95,6 @@ async function main(){
     fs.writeFileSync('tests/random-3.json', JSON.stringify(embeddingr3));
     console.log(Date.now() - time1r3);
 
-    var time1a1 = Date.now();
-    var embeddinga1 = await manager.getEmbedding(str,"oldest",false);
-    console.log(embeddinga1);
-    embeddinga1.processingTime = Date.now() - time1a1;
-    fs.writeFileSync('tests/all.json', JSON.stringify(embeddinga1));
-    console.log(Date.now() - time1a1);
-
     var time2 = Date.now();
     var embedding2 = await manager.getEmbedding(str,"oldest");
     console.log(embedding2);
@@ -107,5 +108,7 @@ async function main(){
     embedding3.processingTime = time3 - Date.now()
     fs.writeFileSync('tests/newest.json', JSON.stringify(embedding3));
     console.log(Date.now() - time3);
+
+    await manager.save("test.json")
 }
 main()

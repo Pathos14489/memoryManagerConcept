@@ -3,10 +3,28 @@ import got from "got";
 import FormData from 'form-data';
 import { apiURL } from "../index.js";
 export class Memory{
+    createdAt = Date.now()
     chunks = []
-    constructor(manager){
+    comparisonCache = {};
+    constructor(manager,options){
         this.manager = manager;
-        this.createdAt = Date.now()
+        if(options){
+            // console.log("Memory:",options.createdAt);
+            if(options.createdAt){
+                this.createdAt = options.createdAt;
+            }
+            if(options.chunks){
+                options.chunks.forEach(chunk => {
+                    this.chunks.push(new Chunk(this,chunk.string,chunk.createdAt));
+                })
+                console.log(`Loaded ${this.chunks.length} chunks`);
+            }
+            if(options.cache){
+                console.log(`Loading cache for memory ${this.index}`);
+                this.comparisonCache = JSON.parse(options.cache);
+                console.log(`Loaded ${this.comparisonCache.length} cached results`);
+            }
+        }
     }
     get lastChunk(){
         return this.chunks[this.chunks.length - 1];
@@ -26,17 +44,19 @@ export class Memory{
             console.log("Ignoring empty chunk");
         }
     }
-    comparisonCache = {};
     async compare(string){
         // console.log(string);
         var form = new FormData();
         form.append('input', string);
         form.append('references', this.chunks.map(chunk => chunk.string).join('|'));
         var result = null
+        // console.log(this.comparisonCache);
         if(this.comparisonCache[string]){
             if(this.comparisonCache[string].chunkCount == this.chunks.length){
+                // console.log(`Using cached result for ${string}`);
                 result = this.comparisonCache[string].result;
             }else{
+                // console.log(`Updating cache for ${string}`);
                 var response = await got(apiURL + "similarity", {
                     method: "POST",
                     body: form
@@ -44,6 +64,7 @@ export class Memory{
                 result = JSON.parse(response.body);
             }
         }else{
+            // console.log(`No cached result for ${string}`);
             var response = await got(apiURL + "similarity", {
                 method: "POST",
                 body: form
@@ -73,5 +94,12 @@ export class Memory{
             score: score,
             embedding: result
         };
+    }
+    get export(){
+        return {
+            createdAt: this.createdAt,
+            chunks: this.chunks.map(chunk => chunk.export),
+            cache: JSON.stringify(this.comparisonCache)
+        }
     }
 }
