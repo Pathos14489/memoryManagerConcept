@@ -5,10 +5,13 @@ export class MemoryManager{
     memorySize = 25;
     bestGuess = false;
     bestGuessOf = 100;
-    constructor(options){
+    id = null;
+    constructor(brain, options){
+        if(brain){
+            this.brain = brain;
+        }
         if(options){
             console.log("MemoryManager:",options);
-            console.log(`Importing ${options.memories.length} memories, with a memory size of ${options.memorySize}, and a best guess of ${options.bestGuessOf}, and a best guess of ${options.bestGuess}`);
             if(options?.memorySize){
                 this.memorySize = options.memorySize || this.memorySize;
             }
@@ -19,26 +22,51 @@ export class MemoryManager{
                 this.bestGuessOf = options.bestGuessOf || this.bestGuessOf;
             }
             if(options?.memories){
+                console.log(`Importing ${options.memories.length} memories, with a memory size of ${options.memorySize}, and a best guess of ${options.bestGuessOf}, and a best guess of ${options.bestGuess}`);
                 this.memories = options.memories.map(memory => new Memory(this,memory));
+            }
+            if(options?.id){
+                this.id = options.id;
             }
         }
         if(this.memories.length == 0){
             this.newMemory();
         }
-        console.log("EXPORT",this.export);
+        console.log("MemoryManager:",this.id);
     }
     get currentMemory(){
         return this.memories[this.memories.length - 1];
+    }
+    get chunks(){
+        return this.memories.reduce((acc,memory) => {
+            return acc.concat(memory.chunks);
+        });
     }
     get lastMemory(){
         return this.memories[this.memories.length - 2];
     }
     newMemory(){
         this.memories.push(new Memory(this));
+        this.onNewMemory();
         return this.currentMemory;
     }
-    newChunk(chunk){
-        this.currentMemory.newChunk(chunk);
+    onNewMemory = () => {};
+    newChunk(chunk,meta){
+        console.log(`Memorizing: ${chunk}`);
+        this.currentMemory.newChunk(chunk,meta);
+    }
+    getContext(amount = 3){
+        // for amount of memories(until out of memories), get the context of the last amount memoies and return it as a combined string
+        var mems = []
+        var memories = this.memories;
+        for(var i = 0; i < amount; i++){
+            if(memories[i]){
+                mems.push(memories[(memories.length-1)-i].context)
+            }
+        }
+        mems.reverse()
+        var context = mems.join("\n");
+        return context;
     }
     async getEmbedding(string,sort = "oldest",bestGuess = null){ // oldest, newest, random
         if(bestGuess == null){
@@ -91,6 +119,7 @@ export class MemoryManager{
     }
     get export(){
         return {
+            id: this.id,
             memories: this.memories.map(memory => memory.export),
             memorySize: this.memorySize,
             bestGuess: this.bestGuess,
@@ -118,5 +147,17 @@ export class MemoryManager{
             this.memories = options.memories.map(memory => new Memory(this,memory));
         }
         return this
+    }
+    findChunkByMeta(prop,meta){
+        console.log(`MemoryManager: findChunkByMeta: ${prop} ${meta}`);
+        for(var i = 0; i < this.memories.length; i++){
+            var memory = this.memories[i];
+            var chunk = memory.findChunkByMeta(prop,meta);
+            console.log(`MemoryManager: findChunkByMeta: ${chunk}`);
+            if(chunk != null){
+                return chunk;
+            }
+        }
+        return null;
     }
 }

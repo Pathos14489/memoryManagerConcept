@@ -14,6 +14,7 @@ export class Memory{
                 this.createdAt = options.createdAt;
             }
             if(options.chunks){
+                options.chunks = options.chunks.filter(chunk => chunk != null);
                 options.chunks.forEach(chunk => {
                     this.chunks.push(new Chunk(this,chunk.string,chunk.createdAt));
                 })
@@ -22,7 +23,7 @@ export class Memory{
             if(options.cache){
                 console.log(`Loading cache for memory ${this.index}`);
                 this.comparisonCache = JSON.parse(options.cache);
-                console.log(`Loaded ${this.comparisonCache.length} cached results`);
+                console.log(`Loaded ${Object.keys(this.comparisonCache).length} cached results`);
             }
         }
     }
@@ -32,21 +33,38 @@ export class Memory{
     get index(){
         return this.manager.memories.indexOf(this);
     }
-    newChunk(string){
+    newChunk(string,meta){
+        console.log(string);
         if(string.replace(/\s/g, '').length > 0){
             if(this.manager.memorySize > this.chunks.length || this.manager.memorySize == 0){
-                this.chunks.push(new Chunk(this, string));
+                this.chunks.push(new Chunk(this, string, meta));
             }else{
                 var newMem = this.manager.newMemory();
-                newMem.newChunk(string);
+                newMem.newChunk(string,meta);
             }
         }else{
             console.log("Ignoring empty chunk");
         }
     }
+    findChunkByMeta(prop,meta){
+        console.log(`Memory: ${this.index} finding chunk.meta.${prop} == ${meta}`);
+        var results = this.chunks.filter(chunk => {
+            console.log(chunk);
+            try{
+                return chunk.meta[prop] == meta;
+            }catch(e){
+                return false;
+            }
+        });
+        if(results.length > 0){
+            return results[0];
+        }
+        return null;
+    }
     async compare(string){
         // console.log(string);
         var form = new FormData();
+        console.log(`Memory: ${this.index} comparing`,string);
         form.append('input', string);
         form.append('references', this.chunks.map(chunk => chunk.string).join('|'));
         var result = null
@@ -101,5 +119,25 @@ export class Memory{
             chunks: this.chunks.map(chunk => chunk.export),
             cache: JSON.stringify(this.comparisonCache)
         }
+    }
+    get context(){
+        var chunks = this.chunks
+        console.log("CHUNKS",chunks);
+        var chonks = chunks.filter(chunk=>{
+            console.log(chunk);
+            if(typeof chunk.meta != "undefined" && typeof chunk.meta != "null" && chunk.meta != "object") return true;
+            else{
+                if(!chunk?.meta?.deleted){
+                    return true;
+                }else{
+                    return false;
+                }
+            }
+        })
+        console.log("C1",chonks);
+        console.log(chonks[0],chonks[0].string);
+        chonks = chonks.map(chunk => chunk.string).join("\n");
+        console.log("C2",chonks);
+        return chonks;
     }
 }
